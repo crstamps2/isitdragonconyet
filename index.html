@@ -20,23 +20,134 @@
     a { color: #dc8100; text-decoration: none; }
     a:hover { color: #333; text-decoration: none; }
   </style>
+
+  <script>
+    function getDragonConStatus() {
+      const now = new Date();
+
+      // Convert to Atlanta time (Eastern Time)
+      const atlantaTime = new Date(now.toLocaleString("en-US", {timeZone: "America/New_York"}));
+
+      // Get current year
+      const currentYear = atlantaTime.getFullYear();
+
+      // Find Labor Day for current year (first Monday in September)
+      const currentLaborDay = new Date(currentYear, 8, 1); // September 1st
+      while (currentLaborDay.getDay() !== 1) { // 1 = Monday
+        currentLaborDay.setDate(currentLaborDay.getDate() + 1);
+      }
+
+      // Find Labor Day for next year
+      const nextYearLaborDay = new Date(currentYear + 1, 8, 1);
+      while (nextYearLaborDay.getDay() !== 1) {
+        nextYearLaborDay.setDate(nextYearLaborDay.getDate() + 1);
+      }
+
+      // Determine which Labor Day to use
+      let targetLaborDay, targetYear;
+      const daysToCurrentLaborDay = Math.floor((currentLaborDay - atlantaTime) / (1000 * 60 * 60 * 24));
+
+      if (daysToCurrentLaborDay >= -1) {
+        // We're in or approaching the current year's Dragon Con period
+        targetLaborDay = currentLaborDay;
+        targetYear = currentYear;
+      } else {
+        // We're past this year's Dragon Con, look to next year
+        targetLaborDay = nextYearLaborDay;
+        targetYear = currentYear + 1;
+      }
+
+      // Calculate days before the target Labor Day
+      const daysDiff = Math.floor((targetLaborDay - atlantaTime) / (1000 * 60 * 60 * 24));
+
+      // Check if it's 5pm or later on Labor Day
+      const isLaborDayAfter5pm = daysDiff === 0 && atlantaTime.getHours() >= 17;
+
+      let status = {
+        image: 'no.png',
+        title: 'No :(',
+        description: '',
+        ogImage: 'https://isitdragonconyet.com/no.png'
+      };
+
+      if (daysDiff === 4) { // Monday before Labor Day
+        status = {
+          image: 'depends.png',
+          title: 'It depends on who you ask.',
+          description: '',
+          ogImage: 'https://isitdragonconyet.com/depends.png'
+        };
+      } else if (daysDiff === 2) { // Wednesday before Labor Day
+        status = {
+          image: 'yes_wed.png',
+          title: 'YES!!!',
+          description: '(Wednesday is the new Thursday, right?)',
+          ogImage: 'https://isitdragonconyet.com/yes_wed.png'
+        };
+      } else if (daysDiff === 1 || daysDiff === 0 || isLaborDayAfter5pm) { // Thursday before, Labor Day, or after 5pm on Labor Day
+        status = {
+          image: 'yes.png',
+          title: 'YES!!!',
+          description: `Dragon Con ${targetYear} is ON!!!`,
+          ogImage: 'https://isitdragonconyet.com/yes.png'
+        };
+      }
+
+      return status;
+    }
+
+    function updatePage() {
+      const status = getDragonConStatus();
+
+      // Update the main content
+      document.getElementById('dragon-con-title').textContent = status.title;
+
+      const descriptionElement = document.getElementById('dragon-con-description');
+      if (status.description) {
+        descriptionElement.textContent = status.description;
+        descriptionElement.style.display = 'block';
+      } else {
+        descriptionElement.style.display = 'none';
+      }
+
+      // Update meta tags for social media
+      document.querySelector('meta[property="og:image"]').setAttribute('content', status.ogImage);
+      document.querySelector('meta[name="twitter:image"]').setAttribute('content', status.ogImage);
+
+      // Update description meta tags
+      const ogDescription = document.querySelector('meta[property="og:description"]');
+      const twitterDescription = document.querySelector('meta[name="twitter:description"]');
+
+      if (status.description) {
+        ogDescription.setAttribute('content', `${status.title} ${status.description}`);
+        twitterDescription.setAttribute('content', `${status.title} ${status.description}`);
+      } else {
+        ogDescription.setAttribute('content', status.title);
+        twitterDescription.setAttribute('content', status.title);
+      }
+    }
+
+    // Update page when it loads
+    window.addEventListener('load', updatePage);
+  </script>
+
   <!-— facebook open graph tags additive with the og: tags -->
   <meta property="og:title" content="Is It Dragon Con Yet?" />
   <meta property="og:site_name" content="Is It Dragon Con Yet?" />
   <meta property="og:title" content="Is It Dragon Con Yet?" />
   <meta property="og:type" content="website" />
-  <meta property="og:description" content="YES!!! (Wednesday is the new Thursday, right?)" />
-  <meta property="og:image" content="https://isitdragonconyet.com/yes_wed.png" />
+  <meta property="og:description" content="No :(" />
+  <meta property="og:image" content="https://isitdragonconyet.com/no.png" />
   <!-— twitter card tags additive with the twitter: tags -->
   <meta name="twitter:card" content="summary_large_image">
   <meta name="twitter:domain" value="isitdragonconyet.com" />
   <meta name="twitter:title" value="Is It Dragon Con Yet?" />
-  <meta name="twitter:description" value="YES!!! (Wednesday is the new Thursday, right?)" />
-  <meta name="twitter:image" content="https://isitdragonconyet.com/yes_wed.png" />
+  <meta name="twitter:description" value="No :(" />
+  <meta name="twitter:image" content="https://isitdragonconyet.com/no.png" />
   <meta name="twitter:url" value="https://isitdragonconyet.com" />
 </head>
 
 <article>
-  <h1>YES!!!</h1>
-  <p>(Wednesday is the new Thursday, right?)
+  <h1 id="dragon-con-title">YES!!!</h1>
+  <p id="dragon-con-description">(Wednesday is the new Thursday, right?)</p>
 </article>
