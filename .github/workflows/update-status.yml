@@ -1,0 +1,38 @@
+name: Update Dragon Con status
+
+on:
+  schedule:
+    # 04:05 UTC = 00:05 America/New_York during EDT (which covers Dragon Con
+    # week in early September); a few hours off during EST doesn't matter
+    # since the status is "No" for all of that period anyway.
+    - cron: '5 4 * * *'
+  workflow_dispatch: {}
+
+permissions:
+  contents: write
+
+jobs:
+  update-status:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      - name: Compute status and update index.html
+        id: status
+        run: node .github/scripts/update-status.mjs
+
+      - name: Commit and push if changed
+        run: |
+          if [ "${{ steps.status.outputs.changed }}" != "true" ]; then
+            echo "No status change today."
+            exit 0
+          fi
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add index.html
+          git commit -m "chore: update Dragon Con status for $(date -u +%F) — ${{ steps.status.outputs.summary }}"
+          git push
