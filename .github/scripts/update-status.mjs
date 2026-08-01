@@ -11,6 +11,7 @@ import { dirname, join } from 'node:path';
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const repoRoot = join(__dirname, '..', '..');
 const indexPath = join(repoRoot, 'index.html');
+const sitemapPath = join(repoRoot, 'sitemap.xml');
 const siteOrigin = 'https://isitdragonconyet.com';
 
 // Returns the chosen status plus the diagnostics that produced it (today's
@@ -102,6 +103,18 @@ function setElementText(html, elementRegex, newText) {
   return html.replace(elementRegex, `$1${escapeHtml(newText)}$2`);
 }
 
+// Updates the `description` field inside the page's JSON-LD <script> block
+function setJsonLdDescription(html, newDescription) {
+  const regex = /(<script type="application\/ld\+json">\s*)([\s\S]*?)(\s*<\/script>)/;
+  const match = html.match(regex);
+  if (!match) {
+    throw new Error('Could not find JSON-LD <script> block in index.html');
+  }
+  const data = JSON.parse(match[2]);
+  data.description = newDescription;
+  return html.replace(regex, `$1${JSON.stringify(data, null, 2)}$3`);
+}
+
 const status = getDragonConStatus();
 const imageUrl = `${siteOrigin}/${status.image}`;
 const combinedDescription = status.description ? `${status.title} ${status.description}` : status.title;
@@ -116,6 +129,7 @@ html = setMetaContent(html, 'name="twitter:description"', combinedDescription);
 html = setMetaContent(html, 'name="twitter:image"', imageUrl);
 html = setMetaContent(html, 'name="twitter:image:alt"', combinedDescription);
 html = setMetaContent(html, 'name="description"', combinedDescription);
+html = setJsonLdDescription(html, combinedDescription);
 
 html = setElementText(html, /(<h1 id="dragon-con-title">)[^<]*(<\/h1>)/, status.title);
 
@@ -129,6 +143,18 @@ html = html.replace(
 const htmlChanged = html !== originalHtml;
 if (htmlChanged) {
   writeFileSync(indexPath, html);
+}
+
+// Keep the sitemap's lastmod honest — only bump it when the page actually changed
+if (htmlChanged) {
+  const originalSitemap = readFileSync(sitemapPath, 'utf8');
+  const newSitemap = originalSitemap.replace(
+    /<lastmod>[^<]*<\/lastmod>/,
+    `<lastmod>${status.todayIso}</lastmod>`
+  );
+  if (newSitemap !== originalSitemap) {
+    writeFileSync(sitemapPath, newSitemap);
+  }
 }
 
 // Log what was decided and why, so it shows up in the Action's run log
